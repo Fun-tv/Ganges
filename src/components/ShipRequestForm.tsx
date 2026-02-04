@@ -7,7 +7,7 @@ import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
 import { ArrowLeft, Package, Globe, Truck } from 'lucide-react';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 interface ShipRequestFormProps {
   onBack: () => void;
@@ -63,7 +63,7 @@ export function ShipRequestForm({ onBack, packageId }: ShipRequestFormProps) {
               <Label>Destination Country *</Label>
               <Select
                 value={formData.destination}
-                onValueChange={(value) => setFormData({ ...formData, destination: value })}
+                onValueChange={(value: string) => setFormData({ ...formData, destination: value })}
                 required
               >
                 <SelectTrigger>
@@ -86,7 +86,7 @@ export function ShipRequestForm({ onBack, packageId }: ShipRequestFormProps) {
               <Label>Shipping Method *</Label>
               <Select
                 value={formData.shippingMethod}
-                onValueChange={(value) => setFormData({ ...formData, shippingMethod: value })}
+                onValueChange={(value: string) => setFormData({ ...formData, shippingMethod: value })}
                 required
               >
                 <SelectTrigger>
@@ -103,7 +103,7 @@ export function ShipRequestForm({ onBack, packageId }: ShipRequestFormProps) {
               <Label>Add Insurance (Optional)</Label>
               <Select
                 value={formData.insurance ? 'yes' : 'no'}
-                onValueChange={(value) => setFormData({ ...formData, insurance: value === 'yes' })}
+                onValueChange={(value: string) => setFormData({ ...formData, insurance: value === 'yes' })}
               >
                 <SelectTrigger>
                   <SelectValue />

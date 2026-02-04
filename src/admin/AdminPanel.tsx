@@ -1,21 +1,16 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
-import { 
-  LayoutDashboard, ShoppingCart, Package, Users, Settings, 
-  FileText, TrendingUp, Mail, Phone, MapPin, CheckCircle, XCircle,
-  Clock, DollarSign, Search, Filter, Download, Eye, Edit, Trash2,
-  ArrowLeft, Send, Loader2, AlertCircle, RefreshCw
+import {
+  ShoppingCart, Package, Users, DollarSign,
+  CheckCircle, ArrowLeft, Send, Loader2, AlertCircle, RefreshCw
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Badge } from '../components/ui/badge';
-import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import logo from 'figma:asset/35424f6f7581dcd0957679d7cd3c9d5bfc8f9f2a.png';
-import { toast } from 'sonner@2.0.3';
-import { supabase } from '../utils/supabase/client';
+import { toast } from 'sonner';
+import { supabase } from '../lib/supabaseClient';
 
 interface AdminPanelProps {
   onBackToHome?: () => void;
@@ -73,13 +68,13 @@ export function AdminPanel({ onBackToHome, onLogout }: AdminPanelProps) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Real data from Supabase
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [personalShopperRequests, setPersonalShopperRequests] = useState<PersonalShopperRequest[]>([]);
-  
+
   // Statistics
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -122,7 +117,8 @@ export function AdminPanel({ onBackToHome, onLogout }: AdminPanelProps) {
         .order('created_at', { ascending: false });
 
       if (transactionsError) throw transactionsError;
-      setTransactions(transactionsData || []);
+      const typedTransactions = (transactionsData || []) as Transaction[];
+      setTransactions(typedTransactions);
 
       // Fetch personal shopper requests
       const { data: requestsData, error: requestsError } = await supabase
@@ -131,14 +127,15 @@ export function AdminPanel({ onBackToHome, onLogout }: AdminPanelProps) {
         .order('created_at', { ascending: false });
 
       if (requestsError) throw requestsError;
-      setPersonalShopperRequests(requestsData || []);
+      const typedRequests = (requestsData || []) as PersonalShopperRequest[];
+      setPersonalShopperRequests(typedRequests);
 
       // Calculate stats
-      const totalRevenue = transactionsData?.reduce((sum, txn) => {
+      const totalRevenue = typedTransactions.reduce((sum, txn) => {
         return txn.type === 'Credit' ? sum + txn.amount : sum;
       }, 0) || 0;
 
-      const pendingRequests = requestsData?.filter(r => r.status === 'Pending').length || 0;
+      const pendingRequests = typedRequests.filter(r => r.status === 'Pending').length || 0;
 
       setStats({
         totalUsers: usersData?.length || 0,
@@ -270,7 +267,7 @@ export function AdminPanel({ onBackToHome, onLogout }: AdminPanelProps) {
             <h1 className="text-2xl">Admin Panel</h1>
           </div>
           <div className="flex items-center gap-3">
-            <Button 
+            <Button
               variant="outline"
               size="sm"
               onClick={fetchAllData}
@@ -278,7 +275,7 @@ export function AdminPanel({ onBackToHome, onLogout }: AdminPanelProps) {
               <RefreshCw className="mr-2" size={16} />
               Refresh
             </Button>
-            <Button 
+            <Button
               variant="outline"
               size="sm"
               onClick={onBackToHome}
@@ -286,7 +283,7 @@ export function AdminPanel({ onBackToHome, onLogout }: AdminPanelProps) {
               <ArrowLeft className="mr-2" size={16} />
               Back to Site
             </Button>
-            <Button 
+            <Button
               variant="outline"
               size="sm"
               onClick={onLogout}
@@ -500,9 +497,9 @@ export function AdminPanel({ onBackToHome, onLogout }: AdminPanelProps) {
                                 </p>
                               )}
                               <div className="flex gap-2">
-                                <Select 
+                                <Select
                                   value={pkg.status}
-                                  onValueChange={(value) => updatePackageStatus(pkg.id, value)}
+                                  onValueChange={(value: string) => updatePackageStatus(pkg.id, value)}
                                 >
                                   <SelectTrigger className="w-48">
                                     <SelectValue />
@@ -577,7 +574,7 @@ export function AdminPanel({ onBackToHome, onLogout }: AdminPanelProps) {
                                 </div>
                                 <div>
                                   {txn.status === 'Pending' && txn.type === 'Credit' && (
-                                    <Button 
+                                    <Button
                                       size="sm"
                                       onClick={() => approveTransaction(txn.id)}
                                       className="bg-green-600 hover:bg-green-700"
@@ -632,7 +629,7 @@ export function AdminPanel({ onBackToHome, onLogout }: AdminPanelProps) {
                                 <p>{new Date(request.created_at).toLocaleDateString()}</p>
                               </div>
                             </div>
-                            
+
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                               {request.size && (
                                 <div>
@@ -650,7 +647,7 @@ export function AdminPanel({ onBackToHome, onLogout }: AdminPanelProps) {
 
                             <div>
                               <p className="text-sm text-gray-600 mb-1">Product URL</p>
-                              <a 
+                              <a
                                 href={request.product_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
@@ -668,9 +665,9 @@ export function AdminPanel({ onBackToHome, onLogout }: AdminPanelProps) {
                             )}
 
                             <div className="flex gap-2 items-center">
-                              <Select 
+                              <Select
                                 value={request.status}
-                                onValueChange={(value) => updateRequestStatus(request.id, value)}
+                                onValueChange={(value: string) => updateRequestStatus(request.id, value)}
                               >
                                 <SelectTrigger className="w-48">
                                   <SelectValue />

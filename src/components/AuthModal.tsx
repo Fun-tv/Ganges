@@ -4,8 +4,8 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { authService } from '../services/api.service';
-import { toast } from 'sonner@2.0.3';
-import { supabase } from '../utils/supabase/client';
+import { toast } from 'sonner';
+import { supabase } from '../lib/supabaseClient';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -17,6 +17,7 @@ interface AuthModalProps {
 export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }: AuthModalProps) {
   const [mode, setMode] = useState<'signin' | 'signup'>(defaultMode);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -29,6 +30,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
   if (!isOpen) return null;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setError(null);
     setFormData(prev => ({
       ...prev,
       [e.target.name]: e.target.value,
@@ -38,15 +40,22 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
+
+    console.log('🔐 Starting email/password sign in...');
 
     try {
       const result = await authService.login(formData.email, formData.password);
-      
+
+      console.log('✅ Sign in successful:', {
+        userId: result.user.id,
+        email: result.user.email,
+      });
+
       toast.success('Welcome back!', {
         description: `Signed in as ${result.profile?.full_name || formData.email}`,
       });
 
-      // Store user info in localStorage for easy access
       localStorage.setItem('user', JSON.stringify({
         id: result.user.id,
         email: result.user.email,
@@ -56,20 +65,29 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
       onSuccess?.();
       onClose();
     } catch (error: any) {
-      console.error('Sign in error:', error);
-      
-      const isDatabaseError = error.message?.includes('user_profiles') || 
-                             error.message?.includes('schema cache') || 
-                             error.message?.includes('table');
-      
+      console.error('🔴 Sign in error:', {
+        message: error.message,
+        status: error.status,
+        code: error.code,
+        name: error.name,
+      });
+
+      const isDatabaseError = error.message?.includes('user_profiles') ||
+        error.message?.includes('schema cache') ||
+        error.message?.includes('table');
+
       if (isDatabaseError) {
-        toast.error('🚨 Database Setup Required!', {
-          description: 'Please run the SQL migration in Supabase first. Check DATABASE_SETUP_NOW.md for instructions.',
+        const errorMsg = '🚨 Database Setup Required! Please run the SQL migration in Supabase first.';
+        setError(errorMsg);
+        toast.error('Database Setup Required', {
+          description: 'Check the console for migration instructions.',
           duration: 10000,
         });
       } else {
+        const errorMsg = error.message || 'Invalid email or password. Please try again.';
+        setError(errorMsg);
         toast.error('Sign in failed', {
-          description: error.message || 'Please check your credentials and try again.',
+          description: errorMsg,
         });
       }
     } finally {
@@ -78,24 +96,57 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
   };
 
   const handleGoogleSignIn = async () => {
+    setLoading(true);
+    setError(null);
+
+    console.log('🔐 Starting Google OAuth sign in...');
+
     try {
-      setLoading(true);
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}`,
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('🔴 Google OAuth error:', {
+          message: error.message,
+          status: error.status,
+          name: error.name,
+        });
+
+        // Check if Google provider is disabled
+        if (error.message?.includes('provider') || error.message?.includes('disabled')) {
+          const errorMsg = '⚠️ Google Sign-In is currently disabled. Please enable Google provider in Supabase Dashboard → Authentication → Providers → Google.';
+          setError(errorMsg);
+          toast.error('Google Sign-In Disabled', {
+            description: 'Please use email/password or contact support.',
+            duration: 10000,
+          });
+        } else {
+          setError(error.message);
+          toast.error('Google Sign-In Failed', {
+            description: error.message || 'Please try again or use email/password.',
+          });
+        }
+        setLoading(false);
+        return;
+      }
+
+      console.log('✅ Google OAuth redirect initiated:', data);
 
       toast.info('Opening Google Sign-In...', {
         description: 'You will be redirected to complete authentication.',
       });
+
+      // Don't set loading to false - user is being redirected
     } catch (error: any) {
-      console.error('Google sign-in error:', error);
+      console.error('🔴 Google sign-in error:', error);
+      const errorMsg = error.message || 'An unexpected error occurred.';
+      setError(errorMsg);
       toast.error('Google Sign-In Failed', {
-        description: error.message || 'Please try again or use email/password.',
+        description: errorMsg,
       });
       setLoading(false);
     }
@@ -103,27 +154,34 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
 
     // Validation
     if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
       toast.error('Passwords do not match');
       return;
     }
 
     if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters');
       toast.error('Password must be at least 6 characters');
       return;
     }
 
     setLoading(true);
 
+    console.log('🔐 Starting signup...');
+
     try {
-      const result = await authService.register({
+      await authService.register({
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
         password: formData.password,
       });
+
+      console.log('✅ Signup successful');
 
       toast.success('Account created successfully!', {
         description: 'You can now sign in with your credentials.',
@@ -138,20 +196,28 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
         confirmPassword: '',
       }));
     } catch (error: any) {
-      console.error('Sign up error:', error);
-      
-      const isDatabaseError = error.message?.includes('user_profiles') || 
-                             error.message?.includes('schema cache') || 
-                             error.message?.includes('table');
-      
+      console.error('🔴 Sign up error:', {
+        message: error.message,
+        status: error.status,
+        code: error.code,
+      });
+
+      const isDatabaseError = error.message?.includes('user_profiles') ||
+        error.message?.includes('schema cache') ||
+        error.message?.includes('table');
+
       if (isDatabaseError) {
-        toast.error('🚨 Database Setup Required!', {
-          description: 'Please run the SQL migration in Supabase first. Check DATABASE_SETUP_NOW.md for instructions.',
+        const errorMsg = '🚨 Database Setup Required! Please run the SQL migration in Supabase first.';
+        setError(errorMsg);
+        toast.error('Database Setup Required', {
+          description: 'Check the console for migration instructions.',
           duration: 10000,
         });
       } else {
+        const errorMsg = error.message || 'Failed to create account. Please try again.';
+        setError(errorMsg);
         toast.error('Sign up failed', {
-          description: error.message || 'Please try again.',
+          description: errorMsg,
         });
       }
     } finally {
@@ -166,6 +232,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors"
+          disabled={loading}
         >
           <X className="w-5 h-5" />
         </button>
@@ -188,12 +255,15 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
         {/* Tabs */}
         <div className="flex border-b px-8">
           <button
-            onClick={() => setMode('signin')}
-            className={`flex-1 py-3 transition-colors relative ${
-              mode === 'signin'
-                ? 'text-blue-600'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
+            onClick={() => {
+              setMode('signin');
+              setError(null);
+            }}
+            className={`flex-1 py-3 transition-colors relative ${mode === 'signin'
+              ? 'text-blue-600'
+              : 'text-gray-500 hover:text-gray-700'
+              }`}
+            disabled={loading}
           >
             Sign In
             {mode === 'signin' && (
@@ -201,12 +271,15 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
             )}
           </button>
           <button
-            onClick={() => setMode('signup')}
-            className={`flex-1 py-3 transition-colors relative ${
-              mode === 'signup'
-                ? 'text-blue-600'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
+            onClick={() => {
+              setMode('signup');
+              setError(null);
+            }}
+            className={`flex-1 py-3 transition-colors relative ${mode === 'signup'
+              ? 'text-blue-600'
+              : 'text-gray-500 hover:text-gray-700'
+              }`}
+            disabled={loading}
           >
             Sign Up
             {mode === 'signup' && (
@@ -214,6 +287,13 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
             )}
           </button>
         </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="mx-8 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-800">{error}</p>
+          </div>
+        )}
 
         {/* Forms */}
         <div className="p-8">
@@ -232,6 +312,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
                     onChange={handleChange}
                     className="pl-10"
                     required
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -249,6 +330,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
                     onChange={handleChange}
                     className="pl-10"
                     required
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -304,7 +386,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                   />
                 </svg>
-                Sign in with Google
+                {loading ? 'Loading...' : 'Sign in with Google'}
               </Button>
             </form>
           ) : (
@@ -322,6 +404,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
                     onChange={handleChange}
                     className="pl-10"
                     required
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -339,6 +422,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
                     onChange={handleChange}
                     className="pl-10"
                     required
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -355,6 +439,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
                     value={formData.phone}
                     onChange={handleChange}
                     className="pl-10"
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -373,6 +458,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
                     className="pl-10"
                     required
                     minLength={6}
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -390,6 +476,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
                     onChange={handleChange}
                     className="pl-10"
                     required
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -406,6 +493,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
                     value={formData.referralCode}
                     onChange={handleChange}
                     className="pl-10"
+                    disabled={loading}
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-1">Get ₹200 bonus when you use a referral code!</p>
@@ -462,7 +550,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                   />
                 </svg>
-                Sign up with Google
+                {loading ? 'Loading...' : 'Sign up with Google'}
               </Button>
             </form>
           )}

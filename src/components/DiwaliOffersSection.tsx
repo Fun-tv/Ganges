@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Sparkles, Tag, Gift, Zap, Star, TrendingDown, Clock, Copy } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import amazonLogo from 'figma:asset/7931787465ff2cbdd40523e712afe66f9a823ab6.png';
 import flipkartLogo from 'figma:asset/adb4f864912c3e6a56954622989dd71d57fbcbd2.png';
 import myntraLogo from 'figma:asset/73983d44b2e928490eaf938eb8ba58e16b1e0b82.png';
@@ -57,7 +57,7 @@ export function DiwaliOffersSection() {
         <motion.div
           key={i}
           className="absolute text-4xl"
-          initial={{ 
+          initial={{
             x: Math.random() * window.innerWidth,
             y: -50,
             rotate: 0
@@ -119,9 +119,9 @@ export function DiwaliOffersSection() {
           >
             🎆
           </motion.div>
-          <motion.h2 
+          <motion.h2
             className="text-5xl md:text-7xl mb-6 text-white"
-            animate={{ 
+            animate={{
               textShadow: [
                 '0 0 20px rgba(255,255,255,0.5)',
                 '0 0 40px rgba(255,255,255,0.8)',
@@ -172,7 +172,7 @@ export function DiwaliOffersSection() {
                   <p className={`text-sm bg-gradient-to-r ${offer.color} bg-clip-text text-transparent mb-3`}>
                     {offer.store}
                   </p>
-                  <motion.div 
+                  <motion.div
                     className={`bg-gradient-to-r ${offer.color} text-white px-4 py-2 rounded-lg inline-block`}
                     animate={{ scale: [1, 1.05, 1] }}
                     transition={{ repeat: Infinity, duration: 1.5 }}
@@ -198,7 +198,7 @@ export function DiwaliOffersSection() {
               <motion.div
                 key={i}
                 className="absolute text-6xl"
-                initial={{ 
+                initial={{
                   x: Math.random() * 100 + '%',
                   y: Math.random() * 100 + '%',
                 }}
@@ -268,7 +268,7 @@ export function DiwaliOffersSection() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <Button 
+                  <Button
                     className="bg-gradient-to-r from-orange-600 to-pink-600 hover:from-orange-700 hover:to-pink-700 text-white px-12 py-6 text-xl shadow-2xl"
                     onClick={() => setShowCoupon(true)}
                   >

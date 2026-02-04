@@ -282,3 +282,4 @@ BEGIN
   RAISE NOTICE 'Tables: user_profiles, packages, transactions, coupons, coupon_usage, personal_shopper_requests, referrals, shipping_addresses, package_tracking';
   RAISE NOTICE 'Sample coupons added: WELCOME50, DIWALI100, SAVE20, FIRST500, MEGA30';
 END $$;
+

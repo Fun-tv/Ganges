@@ -25,7 +25,7 @@ export const initGA = (trackingId: string) => {
 // Track page view
 export const trackPageView = (url: string) => {
   if (typeof window !== 'undefined' && (window as any).gtag) {
-    (window as any).gtag('config', process.env.REACT_APP_GOOGLE_ANALYTICS_ID, {
+    (window as any).gtag('config', import.meta.env.VITE_GOOGLE_ANALYTICS_ID, {
       page_path: url,
     });
   }
@@ -89,7 +89,7 @@ export const analytics = {
 // Facebook Pixel (Optional)
 export const initFacebookPixel = (pixelId: string) => {
   if (typeof window !== 'undefined' && pixelId) {
-    const fbq = (window as any).fbq || function(...args: any[]) {
+    const fbq = (window as any).fbq || function (...args: any[]) {
       ((window as any).fbq.q = (window as any).fbq.q || []).push(args);
     };
     (window as any).fbq = fbq;

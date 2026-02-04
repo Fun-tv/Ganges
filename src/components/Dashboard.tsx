@@ -1,26 +1,26 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  LayoutDashboard, Package, Truck, ShoppingCart, Store, Tag, Ticket, 
-  XCircle, HelpCircle, Calculator, FileText, Map, Gift, Menu, X, 
+import {
+  LayoutDashboard, Package, Truck, ShoppingCart, Store, Tag, Ticket,
+  XCircle, HelpCircle, Calculator, FileText, Map, Gift, Menu, X,
   Copy, Wallet, ChevronRight, Home, MessageCircle, TrendingUp, Users,
   DollarSign, Clock, CheckCircle, AlertCircle, Sparkles, User, Upload,
-  Download, Settings, CreditCard, LogOut, Loader2, Lock, Bookmark, 
+  Download, Settings, CreditCard, LogOut, Loader2, Lock, Bookmark,
   MapPin, Book, ShoppingBag, Percent, Archive, Edit, Plus, ExternalLink
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import logo from 'figma:asset/35424f6f7581dcd0957679d7cd3c9d5bfc8f9f2a.png';
 import { ProhibitedSection } from './ProhibitedSection';
 import { FAQSection } from './FAQSection';
 import { IndianStoresSection } from './IndianStoresSection';
 import { ShipRequestForm } from './ShipRequestForm';
 import { PersonalShopperRequest } from './PersonalShopperRequest';
-import { supabase } from '../utils/supabase/client';
-import type { UserProfile, Package as PackageType, Transaction, Coupon } from '../utils/supabase/client';
+import { supabase } from '../lib/supabaseClient';
+import type { UserProfile, Package as PackageType, Transaction, Coupon } from '../types/supabase';
 import { packageService, walletService, couponService, referralService } from '../services/api.service';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Label } from './ui/label';
@@ -53,7 +53,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
   const [calcCountry, setCalcCountry] = useState('USA');
   const [showCalcResults, setShowCalcResults] = useState(false);
   const [shippingMethod, setShippingMethod] = useState<'Economy' | 'Ganges One'>('Economy');
-  
+
   // Real user data
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [packages, setPackages] = useState<PackageType[]>([]);
@@ -110,7 +110,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
 
       // Get current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
+
       if (userError || !user) {
         toast.error('Please sign in to access dashboard');
         onBackToHome?.();
@@ -300,7 +300,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
       setUploading(true);
 
       const fileName = `${user.id}/${Date.now()}_${file.name}`;
-      
+
       const { error: uploadError } = await supabase.storage
         .from('documents')
         .upload(fileName, file);
@@ -341,15 +341,15 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
   const calculateShipping = () => {
     const weight = parseFloat(calcWeight) || 1;
     const ceilingWeight = Math.ceil(weight); // Round up to nearest kg
-    
+
     const rates = {
       'Economy': 2500,
       'Ganges One': 3500
     };
-    
+
     const rate = rates[shippingMethod];
     const cost = ceilingWeight * rate;
-    
+
     setShowCalcResults(true);
     toast.success(`Estimated cost: ₹${cost.toLocaleString()}`);
   };
@@ -367,7 +367,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
 
   if (error) {
     const isDatabaseError = error.includes('user_profiles') || error.includes('schema cache') || error.includes('table');
-    
+
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
         <Card className="max-w-2xl w-full">
@@ -376,7 +376,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
             <h2 className="text-2xl text-center mb-4">
               {isDatabaseError ? '🚨 Database Setup Required!' : 'Error Loading Dashboard'}
             </h2>
-            
+
             {isDatabaseError ? (
               <div className="space-y-4 text-left">
                 <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
@@ -387,7 +387,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
                     Error: {error}
                   </p>
                 </div>
-                
+
                 <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
                   <h3 className="text-lg mb-2">✅ Fix This Now (5 minutes):</h3>
                   <ol className="list-decimal list-inside space-y-2 text-sm">
@@ -404,15 +404,15 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
                 </div>
 
                 <div className="flex gap-2">
-                  <Button 
-                    onClick={fetchUserData} 
+                  <Button
+                    onClick={fetchUserData}
                     className="flex-1 bg-green-600 hover:bg-green-700"
                   >
                     I've Run the SQL - Refresh Now
                   </Button>
-                  <Button 
-                    onClick={onBackToHome} 
-                    variant="outline" 
+                  <Button
+                    onClick={onBackToHome}
+                    variant="outline"
                     className="flex-1"
                   >
                     Back to Home
@@ -522,7 +522,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   Recent Packages
-                  <Button 
+                  <Button
                     onClick={() => setActiveSection('locker')}
                     variant="outline"
                     size="sm"
@@ -549,9 +549,9 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
                         'Out for Delivery': { text: 'text-yellow-600', bg: 'bg-yellow-50' },
                         'Delivered': { text: 'text-green-600', bg: 'bg-green-50' },
                       };
-                      
+
                       const colors = statusColors[pkg.status] || statusColors['Pending'];
-                      
+
                       return (
                         <motion.div
                           key={pkg.id}
@@ -653,7 +653,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
                     <Lock className="mr-2" />
                     My Locker - Packages at Warehouse
                   </span>
-                  <Button 
+                  <Button
                     onClick={fetchUserData}
                     variant="outline"
                     size="sm"
@@ -680,12 +680,12 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
                         'Out for Delivery': { text: 'text-yellow-600', bg: 'bg-yellow-50', border: 'border-yellow-200' },
                         'Delivered': { text: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200' },
                       };
-                      
+
                       const colors = statusColors[pkg.status] || statusColors['Pending'];
-                      
+
                       const daysInLocker = Math.floor((new Date().getTime() - new Date(pkg.created_at).getTime()) / (1000 * 60 * 60 * 24));
                       const storageCharge = daysInLocker > 20 ? (daysInLocker - 20) * 100 : 0;
-                      
+
                       return (
                         <Card key={pkg.id} className={`border-2 ${colors.border}`}>
                           <CardContent className="p-6">
@@ -706,7 +706,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
                                   )}
                                 </div>
                                 {pkg.status === 'Warehouse' && (
-                                  <Button 
+                                  <Button
                                     className="mt-4"
                                     onClick={() => {
                                       setSelectedPackage(pkg.id);
@@ -728,7 +728,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
             </Card>
 
             {showShipRequest && (
-              <ShipRequestForm 
+              <ShipRequestForm
                 packageId={selectedPackage}
                 onClose={() => {
                   setShowShipRequest(false);
@@ -784,7 +784,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
                                 <p className="text-orange-600">{pkg.status}</p>
                               </div>
                             </div>
-                            
+
                             {/* Tracking Timeline */}
                             <div className="space-y-4 mt-6">
                               <div className="flex items-start gap-4">
@@ -796,7 +796,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
                                   <p className="text-xs text-gray-500">{new Date(pkg.created_at).toLocaleDateString()}</p>
                                 </div>
                               </div>
-                              
+
                               <div className="flex items-start gap-4">
                                 <div className={`${pkg.status === 'In Transit' || pkg.status === 'Out for Delivery' || pkg.status === 'Delivered' ? 'bg-orange-500' : 'bg-gray-300'} rounded-full p-2`}>
                                   <Truck className="text-white" size={20} />
@@ -806,7 +806,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
                                   <p className="text-xs text-gray-500">Currently shipping</p>
                                 </div>
                               </div>
-                              
+
                               <div className="flex items-start gap-4">
                                 <div className={`${pkg.status === 'Delivered' ? 'bg-green-500' : 'bg-gray-300'} rounded-full p-2`}>
                                   <CheckCircle className="text-white" size={20} />
@@ -856,7 +856,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
                           <p className="text-2xl text-purple-600">1-2 business days</p>
                         </div>
                       </div>
-                      <Button 
+                      <Button
                         onClick={() => setShowPersonalShopperRequest(true)}
                         className="w-full bg-purple-600 hover:bg-purple-700"
                       >
@@ -903,7 +903,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
                     Profile Information
                   </span>
                   {!isEditingProfile ? (
-                    <Button 
+                    <Button
                       onClick={() => setIsEditingProfile(true)}
                       variant="outline"
                       size="sm"
@@ -942,7 +942,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
                       <Button onClick={handleUpdateProfile}>
                         Save Changes
                       </Button>
-                      <Button 
+                      <Button
                         variant="outline"
                         onClick={() => setIsEditingProfile(false)}
                       >
@@ -972,8 +972,8 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
                       <label className="text-sm text-gray-600">Referral Code</label>
                       <p className="text-lg flex items-center gap-2">
                         {referralCode}
-                        <Copy 
-                          className="w-4 h-4 cursor-pointer text-orange-500" 
+                        <Copy
+                          className="w-4 h-4 cursor-pointer text-orange-500"
                           onClick={handleCopyReferralCode}
                         />
                       </p>
@@ -1010,7 +1010,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
                   <p className="text-sm opacity-90 mb-2">Available Balance</p>
                   <p className="text-4xl mb-4">₹{walletBalance.toLocaleString()}</p>
                   <div className="flex gap-4">
-                    <Button 
+                    <Button
                       onClick={handleWhatsAppPayment}
                       className="bg-white text-green-600 hover:bg-gray-100 flex items-center gap-2"
                     >
@@ -1205,7 +1205,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
                     📄 Please upload your ID proof (Passport, Aadhaar, Driver's License, etc.) for verification purposes.
                   </p>
                 </div>
-                
+
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
                   <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
                   <p className="mb-4">Upload your ID Proof</p>
@@ -1274,7 +1274,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
                         <span className="text-sm">₹90</span>
                         <Checkbox
                           checked={packingOptions.discardShoeBoxes}
-                          onCheckedChange={(checked) => 
+                          onCheckedChange={(checked: boolean) =>
                             setPackingOptions({ ...packingOptions, discardShoeBoxes: checked as boolean })
                           }
                         />
@@ -1290,7 +1290,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
                         <span className="text-sm">₹90</span>
                         <Checkbox
                           checked={packingOptions.extraPackaging}
-                          onCheckedChange={(checked) => 
+                          onCheckedChange={(checked: boolean) =>
                             setPackingOptions({ ...packingOptions, extraPackaging: checked as boolean })
                           }
                         />
@@ -1306,7 +1306,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
                         <span className="text-sm">₹90</span>
                         <Checkbox
                           checked={packingOptions.giftWrap}
-                          onCheckedChange={(checked) => 
+                          onCheckedChange={(checked: boolean) =>
                             setPackingOptions({ ...packingOptions, giftWrap: checked as boolean })
                           }
                         />
@@ -1437,7 +1437,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
                           <div>
                             <h3 className="text-2xl mb-2">{coupon.code}</h3>
                             <p className="text-gray-600 text-sm">
-                              {coupon.discount_type === 'Percentage' 
+                              {coupon.discount_type === 'Percentage'
                                 ? `${coupon.discount_value}% OFF`
                                 : `₹${coupon.discount_value} OFF`}
                             </p>
@@ -1511,7 +1511,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
                   <div>
                     <label className="block text-sm mb-2">Shipping Method</label>
                     <div className="grid grid-cols-2 gap-4">
-                      <Card 
+                      <Card
                         className={`cursor-pointer border-2 ${shippingMethod === 'Economy' ? 'border-orange-500' : 'border-gray-200'}`}
                         onClick={() => setShippingMethod('Economy')}
                       >
@@ -1522,7 +1522,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
                           <p className="text-xs text-gray-500 mt-2">15-20 days</p>
                         </CardContent>
                       </Card>
-                      <Card 
+                      <Card
                         className={`cursor-pointer border-2 ${shippingMethod === 'Ganges One' ? 'border-orange-500' : 'border-gray-200'}`}
                         onClick={() => setShippingMethod('Ganges One')}
                       >
@@ -1536,7 +1536,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
                     </div>
                   </div>
 
-                  <Button 
+                  <Button
                     onClick={calculateShipping}
                     className="w-full bg-orange-500 hover:bg-orange-600"
                   >
@@ -1584,7 +1584,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
                   <p className="text-gray-600 mb-6">
                     Read our latest articles, shipping tips, and international shopping guides
                   </p>
-                  <Button 
+                  <Button
                     onClick={() => window.open('https://shipglobal.in/blogs/', '_blank')}
                     className="bg-orange-500 hover:bg-orange-600"
                   >
@@ -1611,12 +1611,12 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
                 <div className="bg-gradient-to-r from-purple-500 to-pink-600 text-white p-8 rounded-xl mb-6">
                   <h3 className="text-2xl mb-4">Earn ₹200 per referral!</h3>
                   <p className="mb-6">Share your referral code with friends and earn ₹200 for each successful signup</p>
-                  
+
                   <div className="bg-white/20 backdrop-blur p-4 rounded-lg">
                     <p className="text-sm opacity-90 mb-2">Your Referral Code</p>
                     <div className="flex items-center gap-4">
                       <p className="text-3xl flex-1">{referralCode}</p>
-                      <Button 
+                      <Button
                         onClick={handleCopyReferralCode}
                         className="bg-white text-purple-600 hover:bg-gray-100"
                       >
@@ -1652,7 +1652,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
 
                   {/* Share buttons */}
                   <div className="flex gap-3 flex-wrap">
-                    <Button 
+                    <Button
                       onClick={() => {
                         const text = `Join Ganges Lite and get ₹200 free! Use my code: ${referralCode}\n\nhttps://lite.ganges.world`;
                         const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
@@ -1681,8 +1681,8 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
       <div className="bg-white border-b shadow-sm sticky top-0 z-50">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="sm"
               className="md:hidden"
               onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -1695,7 +1695,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <Button 
+            <Button
               variant="ghost"
               size="sm"
               onClick={onBackToHome}
@@ -1703,7 +1703,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
               <Home className="mr-2" size={18} />
               Home
             </Button>
-            <Button 
+            <Button
               variant="ghost"
               size="sm"
               onClick={handleSignOut}
@@ -1727,11 +1727,10 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
                 onClick={() => {
                   setActiveSection(item.id);
                 }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                  activeSection === item.id
-                    ? 'bg-gradient-to-r from-orange-500 to-pink-600 text-white shadow-lg'
-                    : 'hover:bg-blue-800 text-gray-300 hover:text-white'
-                }`}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeSection === item.id
+                  ? 'bg-gradient-to-r from-orange-500 to-pink-600 text-white shadow-lg'
+                  : 'hover:bg-blue-800 text-gray-300 hover:text-white'
+                  }`}
               >
                 <item.icon size={20} />
                 <span>{item.label}</span>
@@ -1741,7 +1740,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
         </div>
 
         {/* Mobile Sidebar */}
-        <motion.div 
+        <motion.div
           initial={false}
           animate={{ x: sidebarOpen ? 0 : -300 }}
           className="fixed md:hidden inset-y-0 left-0 z-40 w-72 bg-gradient-to-b from-blue-900 to-blue-950 text-white border-r border-blue-800 overflow-y-auto"
@@ -1757,11 +1756,10 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
                   setActiveSection(item.id);
                   setSidebarOpen(false);
                 }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                  activeSection === item.id
-                    ? 'bg-gradient-to-r from-orange-500 to-pink-600 text-white shadow-lg'
-                    : 'hover:bg-blue-800 text-gray-300 hover:text-white'
-                }`}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeSection === item.id
+                  ? 'bg-gradient-to-r from-orange-500 to-pink-600 text-white shadow-lg'
+                  : 'hover:bg-blue-800 text-gray-300 hover:text-white'
+                  }`}
               >
                 <item.icon size={20} />
                 <span>{item.label}</span>
@@ -1780,7 +1778,7 @@ export function Dashboard({ onBackToHome }: DashboardProps) {
 
       {/* Mobile overlay */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-30 md:hidden"
           onClick={() => setSidebarOpen(false)}
         />

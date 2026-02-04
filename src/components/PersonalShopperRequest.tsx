@@ -6,7 +6,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { ArrowLeft, ShoppingCart, CheckCircle, DollarSign } from 'lucide-react';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 interface PersonalShopperRequestProps {
   onBack: () => void;
@@ -25,7 +25,7 @@ export function PersonalShopperRequest({ onBack }: PersonalShopperRequestProps) 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate required fields
     if (!formData.productUrl || !formData.productName || !formData.quantity || !formData.pricePerItem) {
       toast.error('Please fill in all required fields');
@@ -33,7 +33,7 @@ export function PersonalShopperRequest({ onBack }: PersonalShopperRequestProps) 
     }
 
     toast.success('Personal shopper request submitted successfully! Our team will contact you within 24-48 hours.');
-    
+
     // Reset form
     setFormData({
       productUrl: '',
@@ -55,7 +55,7 @@ export function PersonalShopperRequest({ onBack }: PersonalShopperRequestProps) 
     const totalProductCost = price * qty;
     const serviceFee = totalProductCost * 0.07; // 7% service fee
     const total = totalProductCost + serviceFee;
-    
+
     return {
       productCost: totalProductCost.toFixed(2),
       serviceFee: serviceFee.toFixed(2),
@@ -200,7 +200,7 @@ export function PersonalShopperRequest({ onBack }: PersonalShopperRequestProps) 
                   <DollarSign className="text-green-600 mr-2" size={24} />
                   <h4 className="text-lg">Estimated Cost Breakdown</h4>
                 </div>
-                
+
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-700">Product Cost ({formData.quantity} × ₹{formData.pricePerItem})</span>
@@ -215,9 +215,9 @@ export function PersonalShopperRequest({ onBack }: PersonalShopperRequestProps) 
                     <span className="text-2xl text-green-600">₹{costs.total}</span>
                   </div>
                 </div>
-                
+
                 <p className="text-xs text-gray-600 mt-4">
-                  * Final cost will be confirmed by our team after verifying the product price and availability. 
+                  * Final cost will be confirmed by our team after verifying the product price and availability.
                   Additional charges may apply for orders with more than 15 items per seller (₹50 per extra item).
                 </p>
               </motion.div>
@@ -259,16 +259,16 @@ export function PersonalShopperRequest({ onBack }: PersonalShopperRequestProps) 
 
             {/* Submit Button */}
             <div className="flex gap-4">
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 onClick={onBack}
                 className="flex-1"
               >
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="flex-1 bg-purple-600 hover:bg-purple-700"
               >
                 Submit Request

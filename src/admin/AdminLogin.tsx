@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import logo from 'figma:asset/35424f6f7581dcd0957679d7cd3c9d5bfc8f9f2a.png';
 
 interface AdminLoginProps {
@@ -21,7 +21,7 @@ export function AdminLogin({ onLogin, onBackToHome }: AdminLoginProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Simple authentication - in production, this should be a secure backend call
     if (credentials.username === 'admin' && credentials.password === 'ganges2025') {
       toast.success('Login successful!');

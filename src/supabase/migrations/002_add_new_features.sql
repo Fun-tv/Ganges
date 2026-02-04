@@ -48,7 +48,7 @@ VALUES ('documents', 'documents', false)
 ON CONFLICT (id) DO NOTHING;
 
 -- Enable RLS for documents bucket
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can upload their own documents
 CREATE POLICY "Users can upload their own documents"
@@ -116,3 +116,5 @@ ON public.packages(courier_partner);
 COMMENT ON COLUMN public.user_profiles.locker_number IS 'Unique locker identifier (GL-1001, GL-1002, etc.)';
 COMMENT ON COLUMN public.packages.courier_partner IS 'Name of courier company handling delivery';
 COMMENT ON COLUMN public.packages.expected_delivery IS 'Expected delivery date/time range';
+
+

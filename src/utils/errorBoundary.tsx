@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Component, ErrorInfo, ReactNode } from 'react';
 
 interface Props {
   children: ReactNode;
@@ -33,7 +33,7 @@ export class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // Log error to console in development
     console.error('Error caught by boundary:', error, errorInfo);
-    
+
     // In production, you can log to an error reporting service like Sentry
     // Example: Sentry.captureException(error, { extra: errorInfo });
   }
@@ -80,7 +80,7 @@ export class ErrorBoundary extends Component<Props, State> {
               >
                 Refresh Page
               </button>
-              
+
               <button
                 onClick={() => (window.location.href = '/')}
                 className="w-full bg-gray-100 text-gray-700 py-3 px-6 rounded-lg font-semibold hover:bg-gray-200 transition-all duration-300"
@@ -109,7 +109,7 @@ export class ErrorBoundary extends Component<Props, State> {
               </div>
             </div>
 
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {import.meta.env.DEV && this.state.error && (
               <details className="mt-6 text-left">
                 <summary className="cursor-pointer text-sm text-gray-500 mb-2">
                   Error Details (Development Only)

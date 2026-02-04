@@ -21,8 +21,8 @@ import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TermsConditions } from './components/TermsConditions';
 import { AuthModal } from './components/AuthModal';
 import { Toaster } from './components/ui/sonner';
-import { supabase } from './utils/supabase/client';
-import { toast } from 'sonner@2.0.3';
+import { supabase } from './lib/supabaseClient';
+import { toast } from 'sonner';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<'landing' | 'dashboard' | 'admin-login' | 'admin' | 'privacy-policy' | 'terms-conditions'>('landing');
@@ -34,11 +34,11 @@ export default function App() {
   // Check authentication status on mount
   useEffect(() => {
     checkAuth();
-    
+
     // Listen for auth state changes
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       setIsAuthenticated(!!session);
-      
+
       if (event === 'SIGNED_IN') {
         toast.success('Signed in successfully!');
       } else if (event === 'SIGNED_OUT') {
@@ -168,15 +168,15 @@ export default function App() {
       <ProhibitedSection />
       <FAQSection />
       <Footer onNavigate={handleNavigate} />
-      
+
       {/* Auth Modal */}
-      <AuthModal 
+      <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         onSuccess={handleAuthSuccess}
         defaultMode={authModalMode}
       />
-      
+
       <Toaster />
     </div>
   );

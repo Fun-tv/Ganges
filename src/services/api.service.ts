@@ -3,10 +3,17 @@
  * Connected to Supabase backend
  */
 
-import { supabase, getAccessToken } from '../utils/supabase/client';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { supabase } from '../lib/supabaseClient';
 
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-9f100126`;
+// Use environment variable for Functions URL or derive it
+const PROJECT_URL = import.meta.env.VITE_SUPABASE_URL;
+const API_URL = `${PROJECT_URL}/functions/v1/make-server-9f100126`;
+
+// Helper to get access token from current session
+async function getAccessToken() {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token || null;
+}
 
 // Generic API request handler
 async function apiRequest<T>(
@@ -14,11 +21,11 @@ async function apiRequest<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const token = await getAccessToken();
-  
+
   const defaultOptions: RequestInit = {
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token || publicAnonKey}`,
+      'Authorization': `Bearer ${token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
     },
     ...options,
   };
@@ -77,27 +84,49 @@ export const authService = {
     password: string;
     phone: string;
   }) {
-    const response = await fetch(`${API_URL}/auth/signup`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${publicAnonKey}`,
+    // Use Supabase Auth SDK for signup
+    const { data, error } = await supabase.auth.signUp({
+      email: userData.email,
+      password: userData.password,
+      options: {
+        data: {
+          full_name: userData.name,
+          phone: userData.phone,
+        },
       },
-      body: JSON.stringify({
-        email: userData.email,
-        password: userData.password,
-        fullName: userData.name,
-        phone: userData.phone,
-      }),
     });
 
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(result.error || 'Registration failed');
+    if (error) {
+      console.error('🔴 Signup error:', {
+        message: error.message,
+        status: error.status,
+        name: error.name,
+      });
+      throw error;
     }
 
-    return result;
+    // Create user profile in database
+    if (data.user) {
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .insert({
+          id: data.user.id,
+          email: userData.email,
+          full_name: userData.name,
+          phone: userData.phone,
+          wallet_balance: 0,
+        });
+
+      if (profileError) {
+        console.error('🔴 Profile creation error:', profileError);
+        // Don't throw - user is created, profile can be created later
+      }
+    }
+
+    return {
+      user: data.user,
+      session: data.session,
+    };
   },
 
   /**
@@ -218,7 +247,7 @@ export const packageService = {
   async trackPackage(trackingNumber: string) {
     const response = await fetch(`${API_URL}/packages/track/${trackingNumber}`, {
       headers: {
-        'Authorization': `Bearer ${publicAnonKey}`,
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
       },
     });
 
@@ -270,7 +299,7 @@ export const shipmentService = {
 
     const baseRate = rates[data.method] || 2500;
     const weightCharge = data.weight * baseRate;
-    
+
     return {
       baseRate,
       weightCharge,
@@ -405,13 +434,13 @@ export const couponService = {
   async getActiveCoupons() {
     const response = await fetch(`${API_URL}/coupons`, {
       headers: {
-        'Authorization': `Bearer ${publicAnonKey}`,
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
       },
     });
 
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
-    
+
     return data.coupons || [];
   },
 };
