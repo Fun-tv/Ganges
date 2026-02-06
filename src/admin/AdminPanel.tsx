@@ -1,16 +1,20 @@
 import { useState, useEffect } from 'react';
+
 import {
-  ShoppingCart, Package, Users, DollarSign,
-  CheckCircle, ArrowLeft, Send, Loader2, AlertCircle, RefreshCw
+  ShoppingCart,
+  Package,
+  Users,
+  DollarSign,
+  CheckCircle,
+  ArrowLeft,
+  Send,
+  Loader2,
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
+
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Badge } from '../components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import logo from 'figma:asset/35424f6f7581dcd0957679d7cd3c9d5bfc8f9f2a.png';
-import { toast } from 'sonner';
-import { supabase } from '../lib/supabaseClient';
 
 interface AdminPanelProps {
   onBackToHome?: () => void;
@@ -714,3 +718,5 @@ export function AdminPanel({ onBackToHome, onLogout }: AdminPanelProps) {
     </div>
   );
 }
+
+
