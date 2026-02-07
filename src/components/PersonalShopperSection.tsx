@@ -1,9 +1,9 @@
 import { motion } from 'motion/react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
-import { 
-  ShoppingCart, CreditCard, Package, Truck, CheckCircle2, 
-  AlertCircle, ArrowRight, DollarSign, Shield, Clock, Star
+import {
+  ShoppingCart, CreditCard, Package, Truck, CheckCircle2,
+  AlertCircle, ArrowRight, DollarSign, Shield, Star
 } from 'lucide-react';
 import amazonLogo from 'figma:asset/7931787465ff2cbdd40523e712afe66f9a823ab6.png';
 import flipkartLogo from 'figma:asset/adb4f864912c3e6a56954622989dd71d57fbcbd2.png';
@@ -175,7 +175,7 @@ export function PersonalShopperSection({ onGetStartedClick }: PersonalShopperSec
                 >
                   <Card className="h-full border-2 border-gray-200 hover:border-orange-400 transition-all duration-300 hover:shadow-xl">
                     <CardContent className="p-6">
-                      <motion.div 
+                      <motion.div
                         className={`bg-gradient-to-r ${item.color} w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto`}
                         whileHover={{ rotate: 360 }}
                         transition={{ duration: 0.5 }}
@@ -269,12 +269,12 @@ export function PersonalShopperSection({ onGetStartedClick }: PersonalShopperSec
                   <li className="flex items-start space-x-3">
                     <Star className="text-purple-600 flex-shrink-0 mt-1" size={20} />
                     <span>Can I use Personal Shopper to purchase a Gift card / Coupon?<br />
-                    <span className="text-sm text-gray-600">Yes, kindly make sure it should be transferable.</span></span>
+                      <span className="text-sm text-gray-600">Yes, kindly make sure it should be transferable.</span></span>
                   </li>
                   <li className="flex items-start space-x-3">
                     <AlertCircle className="text-purple-600 flex-shrink-0 mt-1" size={20} />
                     <span>Can I Replace/cancel the Coupon/Gift card?<br />
-                    <span className="text-sm text-gray-600">Any Coupon/Gift Card post delivery will not be applicable for return/refund/replacement under any circumstance.</span></span>
+                      <span className="text-sm text-gray-600">Any Coupon/Gift Card post delivery will not be applicable for return/refund/replacement under any circumstance.</span></span>
                   </li>
                 </ul>
               </CardContent>
@@ -296,7 +296,7 @@ export function PersonalShopperSection({ onGetStartedClick }: PersonalShopperSec
             No more barriers to shopping in India - Because We Make Your Shopping Experience Rich & Easy!
           </p>
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <Button 
+            <Button
               size="lg"
               className="bg-white text-orange-600 hover:bg-gray-100 px-12 py-6 text-xl"
               onClick={onGetStartedClick}

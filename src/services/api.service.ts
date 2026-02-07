@@ -9,10 +9,13 @@ import { supabase } from '../lib/supabaseClient';
 const PROJECT_URL = import.meta.env.VITE_SUPABASE_URL;
 const API_URL = `${PROJECT_URL}/functions/v1/make-server-9f100126`;
 
-// Helper to get access token from current session
-async function getAccessToken() {
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token || null;
+// Helper to ensure session exists before direct DB queries
+async function ensureSession() {
+  const { data: { session }, error } = await supabase.auth.getSession();
+  if (error || !session) {
+    throw new Error('❌ API: Active session required for this operation');
+  }
+  return session;
 }
 
 // Generic API request handler
@@ -20,7 +23,14 @@ async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token = await getAccessToken();
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || null;
+
+  // Strict session check for protected endpoints
+  const isPublic = endpoint.startsWith('/auth') || endpoint === '/coupons/validate' || endpoint.includes('/track/');
+  if (!isPublic && !token) {
+    throw new Error('❌ API: Authentication required for this operation');
+  }
 
   const defaultOptions: RequestInit = {
     headers: {
@@ -35,12 +45,14 @@ async function apiRequest<T>(
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || `API Error: ${response.statusText}`);
+      const errorMessage = data.error || data.message || `API Error: ${response.statusText}`;
+      console.error(`🔴 API Failure [${endpoint}]:`, errorMessage);
+      throw new Error(errorMessage);
     }
 
     return data;
   } catch (error: any) {
-    console.error('API Request Failed:', error);
+    console.error(`❌ Network Error [${endpoint}]:`, error.message);
     throw error;
   }
 }
@@ -61,12 +73,18 @@ export const authService = {
 
     if (error) throw error;
 
-    // Get user profile
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('id', data.user.id)
-      .single();
+    // Get user profile - NON-BLOCKING for the login return
+    let profile = null;
+    try {
+      const { data: profileData } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+      profile = profileData;
+    } catch (e) {
+      console.warn('⚠️ Login: Profile fetch skipped');
+    }
 
     return {
       user: data.user,
@@ -84,7 +102,6 @@ export const authService = {
     password: string;
     phone: string;
   }) {
-    // Use Supabase Auth SDK for signup
     const { data, error } = await supabase.auth.signUp({
       email: userData.email,
       password: userData.password,
@@ -96,30 +113,23 @@ export const authService = {
       },
     });
 
-    if (error) {
-      console.error('🔴 Signup error:', {
-        message: error.message,
-        status: error.status,
-        name: error.name,
-      });
-      throw error;
-    }
+    if (error) throw error;
 
-    // Create user profile in database
     if (data.user) {
       const { error: profileError } = await supabase
         .from('user_profiles')
-        .insert({
+        .upsert({
           id: data.user.id,
           email: userData.email,
           full_name: userData.name,
           phone: userData.phone,
           wallet_balance: 0,
+        }, {
+          onConflict: 'id'
         });
 
-      if (profileError) {
-        console.error('🔴 Profile creation error:', profileError);
-        // Don't throw - user is created, profile can be created later
+      if (profileError && profileError.code !== '23505') {
+        console.error('🔴 Profile integration issue:', profileError);
       }
     }
 
@@ -155,8 +165,9 @@ export const userService = {
    * Get user profile
    */
   async getProfile() {
+    await ensureSession();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+    if (!user) throw new Error('❌ Not authenticated');
 
     const { data: profile, error } = await supabase
       .from('user_profiles')
@@ -164,7 +175,10 @@ export const userService = {
       .eq('id', user.id)
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('🔴 Error fetching profile:', error);
+      throw error;
+    }
 
     return {
       id: user.id,
@@ -196,12 +210,16 @@ export const userService = {
    * Get user addresses
    */
   async getAddresses() {
+    await ensureSession();
     const { data, error } = await supabase
       .from('shipping_addresses')
       .select('*')
       .order('is_default', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error('🔴 Error fetching addresses:', error);
+      throw error;
+    }
     return data;
   },
 };
@@ -215,12 +233,16 @@ export const packageService = {
    * Get all packages for current user
    */
   async getPackages() {
+    await ensureSession();
     const { data, error } = await supabase
       .from('packages')
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error('🔴 Error fetching packages:', error);
+      throw error;
+    }
     return data;
   },
 
@@ -245,17 +267,15 @@ export const packageService = {
    * Track package by tracking number
    */
   async trackPackage(trackingNumber: string) {
+    const { data: { session } } = await supabase.auth.getSession();
     const response = await fetch(`${API_URL}/packages/track/${trackingNumber}`, {
       headers: {
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Authorization': `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
       },
     });
 
     const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Package not found');
-    }
+    if (!response.ok) throw new Error(data.error || '❌ Package not found');
 
     return data;
   },
@@ -275,13 +295,28 @@ export const shipmentService = {
     shippingMethod: 'Economy' | 'Ganges One';
     addressId: string;
   }) {
-    console.log('Creating shipment:', data);
-    return {
-      id: `SHP-${Date.now()}`,
-      ...data,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-    };
+    await ensureSession();
+    return await apiRequest('/shipments', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Get all shipments for current user
+   */
+  async getShipments() {
+    await ensureSession();
+    const { data, error } = await supabase
+      .from('shipments')
+      .select('*, packages(*)')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('🔴 Error fetching shipments:', error);
+      throw error;
+    }
+    return data;
   },
 
   /**
@@ -293,8 +328,8 @@ export const shipmentService = {
     method: 'Economy' | 'Ganges One';
   }) {
     const rates: Record<string, number> = {
-      'Economy': 2500, // ₹2500/kg
-      'Ganges One': 3500, // ₹3500/kg
+      'Economy': 2500,
+      'Ganges One': 3500,
     };
 
     const baseRate = rates[data.method] || 2500;
@@ -335,12 +370,16 @@ export const personalShopperService = {
    * Get all personal shopper requests for current user
    */
   async getRequests() {
+    await ensureSession();
     const { data, error } = await supabase
       .from('personal_shopper_requests')
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error('🔴 Error fetching PS requests:', error);
+      throw error;
+    }
     return data;
   },
 };
@@ -354,11 +393,7 @@ export const walletService = {
    * Get wallet balance
    */
   async getBalance() {
-    const response = await apiRequest<{ balance: number }>('/wallet/balance');
-    return {
-      balance: response.balance,
-      currency: '₹',
-    };
+    return await apiRequest<{ balance: number }>('/wallet/balance');
   },
 
   /**
@@ -379,12 +414,16 @@ export const walletService = {
    * Get transaction history
    */
   async getTransactions() {
+    await ensureSession();
     const { data, error } = await supabase
       .from('transactions')
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error('🔴 Error fetching transactions:', error);
+      throw error;
+    }
     return data;
   },
 

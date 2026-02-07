@@ -5,7 +5,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { authService } from '../services/api.service';
 import { toast } from 'sonner';
-import { supabase } from '../lib/supabaseClient';
+import { supabase, getRedirectUrl } from '../lib/supabaseClient';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -105,7 +105,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}`,
+          redirectTo: getRedirectUrl('/dashboard'),
         },
       });
 

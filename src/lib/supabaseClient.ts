@@ -37,9 +37,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
-    storage: window.localStorage,
     autoRefreshToken: true,
     detectSessionInUrl: true,
+    storage: window.localStorage,
   },
   db: {
     schema: 'public',
@@ -86,3 +86,31 @@ export async function checkSupabaseConnection(): Promise<{
     return { connected: false, error: err };
   }
 }
+
+/**
+ * Get Redirect URL for OAuth and Auth Flows
+ * 
+ * Uses environment variable if available, otherwise falls back to window.location.origin
+ * This ensures redirects work correctly in all environments:
+ * - Local development: http://localhost:5173
+ * - Vercel preview: https://your-app-git-branch.vercel.app
+ * - Production: https://your-domain.vercel.app
+ * 
+ * @param path - Optional path to append (e.g., '/dashboard')
+ * @returns Full redirect URL
+ */
+export function getRedirectUrl(path: string = ''): string {
+  // Priority: VITE_SITE_URL env variable > window.location.origin
+  const baseUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
+
+  // Remove trailing slash from baseUrl and leading slash from path to avoid double slashes
+  const cleanBaseUrl = baseUrl.replace(/\/$/, '');
+  const cleanPath = path.replace(/^\//, '');
+
+  const fullUrl = cleanPath ? `${cleanBaseUrl}/${cleanPath}` : cleanBaseUrl;
+
+  console.log('🔗 Redirect URL:', fullUrl);
+
+  return fullUrl;
+}
+

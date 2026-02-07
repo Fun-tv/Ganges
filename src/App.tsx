@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { HeroSection } from './components/HeroSection';
 import { ServicesSection } from './components/ServicesSection';
@@ -14,56 +15,32 @@ import { TestimonialsSection } from './components/TestimonialsSection';
 import { ProhibitedSection } from './components/ProhibitedSection';
 import { FAQSection } from './components/FAQSection';
 import { Footer } from './components/Footer';
-import { Dashboard } from './components/Dashboard';
-import { AdminLogin } from './admin/AdminLogin';
-import { AdminPanel } from './admin/AdminPanel';
-import { PrivacyPolicy } from './components/PrivacyPolicy';
-import { TermsConditions } from './components/TermsConditions';
-import { AuthModal } from './components/AuthModal';
-import { Toaster } from './components/ui/sonner';
-import { supabase } from './lib/supabaseClient';
-import { toast } from 'sonner';
+import { Dashboard } from '@/components/Dashboard';
+import { DashboardHome } from '@/components/dashboard/DashboardHome';
+import { VirtualAddress } from '@/components/dashboard/VirtualAddress';
+import { Locker } from '@/components/dashboard/Locker';
+import { Shipments } from '@/components/dashboard/Shipments';
+import { PersonalShopper } from '@/components/dashboard/PersonalShopper';
+import { ShippingCalculator } from '@/components/dashboard/ShippingCalculator';
+import { Wallet } from '@/components/dashboard/Wallet';
+import { Support } from '@/components/dashboard/Support';
+import { AdminLogin } from '@/admin/AdminLogin';
+import { AdminPanel } from '@/admin/AdminPanel';
+import { PrivacyPolicy } from '@/components/PrivacyPolicy';
+import { TermsConditions } from '@/components/TermsConditions';
+import { AuthModal } from '@/components/AuthModal';
+import { Toaster } from '@/components/ui/sonner';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 
-export default function App() {
-  const [currentView, setCurrentView] = useState<'landing' | 'dashboard' | 'admin-login' | 'admin' | 'privacy-policy' | 'terms-conditions'>('landing');
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+function AppContent() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  // Check authentication status on mount
-  useEffect(() => {
-    checkAuth();
-
-    // Listen for auth state changes
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      setIsAuthenticated(!!session);
-
-      if (event === 'SIGNED_IN') {
-        toast.success('Signed in successfully!');
-      } else if (event === 'SIGNED_OUT') {
-        setCurrentView('landing');
-        setIsAuthenticated(false);
-      }
-    });
-
-    return () => {
-      authListener?.subscription.unsubscribe();
-    };
-  }, []);
-
-  const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    setIsAuthenticated(!!session);
-  };
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
 
   const handleLogin = () => {
-    if (isAuthenticated) {
-      setCurrentView('dashboard');
-    } else {
-      setAuthModalMode('signin');
-      setIsAuthModalOpen(true);
-    }
+    setAuthModalMode('signin');
+    setIsAuthModalOpen(true);
   };
 
   const handleSignUp = () => {
@@ -71,113 +48,96 @@ export default function App() {
     setIsAuthModalOpen(true);
   };
 
-  const handleAuthSuccess = () => {
-    setIsAuthModalOpen(false);
-    setIsAuthenticated(true);
-    setCurrentView('dashboard');
-    toast.success('Welcome to Ganges Lite!');
-  };
-
-  const handleBackToHome = () => {
-    setCurrentView('landing');
-    setIsAdminAuthenticated(false);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   const handleNavigate = (section: string) => {
-    if (section === 'privacy-policy' || section === 'terms-conditions') {
-      setCurrentView(section as any);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else if (section === 'admin') {
-      setCurrentView('admin-login');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      const element = document.getElementById(section);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
+    const element = document.getElementById(section);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
   const handleAdminLogin = () => {
     setIsAdminAuthenticated(true);
-    setCurrentView('admin');
   };
 
   const handleAdminLogout = () => {
     setIsAdminAuthenticated(false);
-    setCurrentView('admin-login');
   };
-
-  if (currentView === 'dashboard') {
-    return <Dashboard onBackToHome={handleBackToHome} />;
-  }
-
-  if (currentView === 'admin-login') {
-    return (
-      <>
-        <AdminLogin onLogin={handleAdminLogin} onBackToHome={handleBackToHome} />
-        <Toaster />
-      </>
-    );
-  }
-
-  if (currentView === 'admin') {
-    return (
-      <>
-        <AdminPanel onBackToHome={handleBackToHome} onLogout={handleAdminLogout} />
-        <Toaster />
-      </>
-    );
-  }
-
-  if (currentView === 'privacy-policy') {
-    return (
-      <>
-        <PrivacyPolicy onBack={handleBackToHome} />
-        <Toaster />
-      </>
-    );
-  }
-
-  if (currentView === 'terms-conditions') {
-    return (
-      <>
-        <TermsConditions onBack={handleBackToHome} />
-        <Toaster />
-      </>
-    );
-  }
 
   return (
     <div className="min-h-screen">
-      <Navbar onLoginClick={handleLogin} onSignUpClick={handleSignUp} onNavigate={handleNavigate} />
-      <HeroSection onSignUpClick={handleSignUp} />
-      <CustomerProblemsSection />
-      <ServicesSection />
-      <HowItWorksSection />
-      <ShippingRatesSection />
-      <PersonalShopperSection onGetStartedClick={handleSignUp} />
-      <div id="offers">
-        <DiwaliOffersSection />
-      </div>
-      <IndianStoresSection />
-      <ShopWorldwideSection onGetStartedClick={handleSignUp} />
-      <ChallengesSection />
-      <TestimonialsSection />
-      <ProhibitedSection />
-      <FAQSection />
-      <Footer onNavigate={handleNavigate} />
+      <Routes>
+        <Route path="/" element={
+          <>
+            <Navbar onLoginClick={handleLogin} onSignUpClick={handleSignUp} onNavigate={handleNavigate} />
+            <HeroSection onSignUpClick={handleSignUp} />
+            <CustomerProblemsSection />
+            <ServicesSection />
+            <HowItWorksSection />
+            <ShippingRatesSection />
+            <PersonalShopperSection onGetStartedClick={handleSignUp} />
+            <div id="offers">
+              <DiwaliOffersSection />
+            </div>
+            <IndianStoresSection />
+            <ShopWorldwideSection onGetStartedClick={handleSignUp} />
+            <ChallengesSection />
+            <TestimonialsSection />
+            <ProhibitedSection />
+            <FAQSection />
+            <Footer onNavigate={handleNavigate} />
+          </>
+        } />
 
-      {/* Auth Modal */}
+        <Route path="/dashboard" element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }>
+          <Route index element={<DashboardHome />} />
+          <Route path="address" element={<VirtualAddress />} />
+          <Route path="locker" element={<Locker />} />
+          <Route path="shipments" element={<Shipments />} />
+          <Route path="shopper" element={<PersonalShopper />} />
+          <Route path="calculator" element={<ShippingCalculator />} />
+          <Route path="wallet" element={<Wallet />} />
+          <Route path="support" element={<Support />} />
+        </Route>
+
+        <Route path="/admin-login" element={
+          isAdminAuthenticated ? <Navigate to="/admin" replace /> :
+            <AdminLogin onLogin={handleAdminLogin} onBackToHome={() => window.location.href = '/'} />
+        } />
+
+        <Route path="/admin" element={
+          isAdminAuthenticated ?
+            <AdminPanel onBackToHome={() => window.location.href = '/'} onLogout={handleAdminLogout} /> :
+            <Navigate to="/admin-login" replace />
+        } />
+
+        <Route path="/privacy-policy" element={<PrivacyPolicy onBack={() => window.location.href = '/'} />} />
+        <Route path="/terms-conditions" element={<TermsConditions onBack={() => window.location.href = '/'} />} />
+
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
-        onSuccess={handleAuthSuccess}
+        onSuccess={() => setIsAuthModalOpen(false)}
         defaultMode={authModalMode}
       />
-
       <Toaster />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Router>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </Router>
   );
 }

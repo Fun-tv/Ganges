@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient';
+import { toast } from 'sonner';
+import logo from 'figma:asset/35424f6f7581dcd0957679d7cd3c9d5bfc8f9f2a.png';
 
 import {
   ShoppingCart,
@@ -15,6 +18,15 @@ import {
 
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select';
 
 interface AdminPanelProps {
   onBackToHome?: () => void;
