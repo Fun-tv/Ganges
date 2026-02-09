@@ -6,6 +6,7 @@ import { Label } from './ui/label';
 import { authService } from '../services/api.service';
 import { toast } from 'sonner';
 import { supabase, getRedirectUrl } from '../lib/supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -26,6 +27,8 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
     confirmPassword: '',
     referralCode: '',
   });
+
+  const { refreshSession } = useAuth();
 
 
 
@@ -89,6 +92,9 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
         email: result.user.email,
         name: result.profile?.full_name,
       }));
+
+      // Force context update before navigation to prevent race conditions
+      await refreshSession();
 
       onSuccess?.();
       onClose();
@@ -199,6 +205,9 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
       toast.success('Account created successfully!', {
         description: 'You can now sign in with your credentials.',
       });
+
+      // Ensure session state is clean
+      await refreshSession();
 
       // Auto switch to sign in mode
       setMode('signin');

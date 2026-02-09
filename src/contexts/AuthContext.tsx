@@ -16,7 +16,7 @@ interface AuthContextType {
     profile: UserProfile | null;
     loading: boolean;
     signOut: () => Promise<void>;
-    refreshSession: () => Promise<void>;
+    refreshSession: () => Promise<Session | null | undefined>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -154,11 +154,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const refreshSession = async () => {
-        const { data, error } = await supabase.auth.refreshSession();
+        const { data, error } = await supabase.auth.getSession(); // getSession is better than refreshSession for just checking state
         if (error) throw error;
+
         if (data.session) {
             setSession(data.session);
             setUser(data.session.user);
+            await fetchProfile(data.session.user.id);
+            return data.session;
         }
     };
 
