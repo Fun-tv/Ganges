@@ -62,6 +62,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (!mounted) return;
             console.log(`🔔 Auth Event: ${event}`, { userId: currentSession?.user?.id });
 
+            // CRITICAL PRODUCTION FIX: Clear hash after successful login/refresh
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                // Safely clear hash without reload
+                if (window.location.hash && (window.location.hash.includes('access_token') || window.location.hash.includes('type=recovery'))) {
+                    window.history.replaceState(null, '', window.location.pathname);
+                }
+            }
+
             if (currentSession?.user) {
                 setSession(currentSession);
                 setUser(currentSession.user);
