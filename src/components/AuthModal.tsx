@@ -27,15 +27,35 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
     referralCode: '',
   });
 
-  if (!isOpen) return null;
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setError(null);
     setFormData(prev => ({
       ...prev,
-      [e.target.name]: e.target.value,
+      [e.target.name as keyof typeof formData]: e.target.value,
     }));
   };
+
+  // Debug: Check connection on mount
+  React.useEffect(() => {
+    if (isOpen) {
+      console.log('🔌 AuthModal opened, checking connection...');
+      // Quick ping to check if Supabase is reachable
+      const checkConnection = async () => {
+        try {
+          // We prefer checking via a simple fetch if possible, but reading session is a safe low-overhead op
+          const start = Date.now();
+          await supabase.auth.getSession();
+          console.log(`✅ Connection check passed in ${Date.now() - start}ms`);
+        } catch (err) {
+          console.error('❌ Connection check failed:', err);
+          toast.error('Connection Warning', { description: 'Could not connect to authentication server.' });
+        }
+      };
+      checkConnection();
+    }
+  }, [isOpen]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,9 +64,17 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
 
     console.log('🔐 Starting email/password sign in...');
 
-    try {
-      const result = await authService.login(formData.email, formData.password);
+    // Safety timeout
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Request timed out. Please check your internet connection.')), 15000)
+    );
 
+    try {
+      const loginPromise = authService.login(formData.email, formData.password);
+
+      const result: any = await Promise.race([loginPromise, timeoutPromise]);
+
+      // ... rest of logic handled by result
       console.log('✅ Sign in successful:', {
         userId: result.user.id,
         email: result.user.email,
@@ -65,35 +93,20 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
       onSuccess?.();
       onClose();
     } catch (error: any) {
-      console.error('🔴 Sign in error:', {
-        message: error.message,
-        status: error.status,
-        code: error.code,
-        name: error.name,
-      });
-
-      const isDatabaseError = error.message?.includes('user_profiles') ||
-        error.message?.includes('schema cache') ||
-        error.message?.includes('table');
-
-      if (isDatabaseError) {
-        const errorMsg = '🚨 Database Setup Required! Please run the SQL migration in Supabase first.';
-        setError(errorMsg);
-        toast.error('Database Setup Required', {
-          description: 'Check the console for migration instructions.',
-          duration: 10000,
-        });
-      } else {
-        const errorMsg = error.message || 'Invalid email or password. Please try again.';
-        setError(errorMsg);
-        toast.error('Sign in failed', {
-          description: errorMsg,
-        });
-      }
+      // ... catch block logic
+      console.error('🔴 Sign in error:', error);
+      setError(error.message || 'An error occurred');
+      toast.error('Sign In Failed', { description: error.message });
     } finally {
-      setLoading(false);
+      if (mounted.current) setLoading(false);
     }
   };
+
+  // Track mount state to avoid setting state on unmounted component
+  const mounted = React.useRef(true);
+  React.useEffect(() => {
+    return () => { mounted.current = false; };
+  }, []);
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
@@ -224,6 +237,8 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
       setLoading(false);
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -561,8 +576,17 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
             {' '}and{' '}
             <button className="text-blue-600 hover:underline">Privacy Policy</button>
           </p>
+
+          {/* Debug Info */}
+          <div className="mt-4 pt-4 border-t border-gray-100 text-[10px] text-gray-400 text-center font-mono">
+            Env: {import.meta.env.MODE} |
+            API: {import.meta.env.VITE_SUPABASE_URL ? 'Configured' : 'Missing'}
+            ({import.meta.env.VITE_SUPABASE_URL?.slice(0, 12)}...)
+          </div>
         </div>
       </div>
     </div>
   );
 }
+
+

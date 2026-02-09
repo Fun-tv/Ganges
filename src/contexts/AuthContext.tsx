@@ -85,7 +85,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 console.error('❌ Auth: Init failed', err.message);
             } finally {
                 if (mounted) {
-                    setLoading(false);
+                    // Critical: If we found no session BUT there is an access_token in hash,
+                    // DO NOT turn off loading yet. Let logic in 'onAuthStateChange' handle it.
+                    const hasAuthHash = window.location.hash.includes('access_token');
+                    if (!hasAuthHash) {
+                        setLoading(false);
+                    } else {
+                        console.log('⏳ Auth: Detected OAuth hash, keeping loading=true');
+                        // SAFETY FALLBACK: Force loading to false after 4 seconds if Supabase doesn't resolve
+                        setTimeout(() => {
+                            if (mounted) {
+                                console.warn('⚠️ Auth: OAuth resolution timed out, forcing app load');
+                                setLoading(false);
+                            }
+                        }, 4000);
+                    }
                     clearTimeout(timeoutId);
                 }
             }
