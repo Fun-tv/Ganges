@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabaseClient';
 
@@ -26,7 +26,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
-    const initialized = useRef(false);
 
     // Helper to fetch profile
     const fetchProfile = async (userId: string) => {
@@ -48,73 +47,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     useEffect(() => {
-        if (initialized.current) return;
-        initialized.current = true;
         let mounted = true;
 
-        // 1. Strict Resolution Timeout (6 seconds)
+        // Safety fallback: Force loading to false after 3s to prevent infinite spinner
         const timeoutId = setTimeout(() => {
-            if (loading && mounted) {
-                console.warn('⚠️ Auth: Resolution timed out - forcing loading=false');
+            if (mounted && loading) {
+                console.warn('⚠️ Auth: Safety timeout triggered');
                 setLoading(false);
             }
-        }, 6000);
+        }, 3000);
 
-        async function initializeAuth() {
-            try {
-                // console.log('🔄 Auth: Resolving session...');
-                const { data, error } = await supabase.auth.getSession();
-
-                if (error) {
-                    // Suppress "Session from URL is stale" error as it's common and harmless
-                    if (!error.message?.includes('stale')) {
-                        console.error('❌ Auth: Session init error', error.message);
-                    }
-                }
-
-                if (mounted) {
-                    // If we have a session, use it
-                    if (data?.session) {
-                        setSession(data.session);
-                        setUser(data.session.user);
-
-                        // Clean up hash if needed (legacy OAuth cleanup)
-                        if (window.location.hash && window.location.hash.includes('access_token=')) {
-                            window.history.replaceState(null, '', window.location.pathname);
-                        }
-
-                        await fetchProfile(data.session.user.id);
-                    }
-                }
-            } catch (err: any) {
-                console.error('❌ Auth: Critical init failure', err);
-            } finally {
-                if (mounted) {
-                    setLoading(false);
-                    clearTimeout(timeoutId);
-                }
-            }
-        }
-
-        initializeAuth();
-
-        // 3. Subscription Management
+        // 1. Setup Listener FIRST (Single Source of Truth)
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
             if (!mounted) return;
-            console.log(`🔔 Auth Event: ${event}`);
+            console.log(`🔔 Auth Event: ${event}`, { userId: currentSession?.user?.id });
 
-            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+            if (currentSession?.user) {
                 setSession(currentSession);
-                setUser(currentSession?.user ?? null);
-                if (currentSession?.user) await fetchProfile(currentSession.user.id);
-            }
+                setUser(currentSession.user);
 
-            if (event === 'SIGNED_OUT') {
+                // CRITICAL: Set loading false first, then fetch profile in background
+                // This prevents "stuck loading" if profile fetch hangs/fails
+                setLoading(false);
+                await fetchProfile(currentSession.user.id);
+            } else {
                 setSession(null);
                 setUser(null);
                 setProfile(null);
+                setLoading(false);
             }
+        });
 
+        // 2. Initial Session Check (Fire and Forget)
+        supabase.auth.getSession().then(({ data, error }) => {
+            if (!mounted) return;
+            if (error && !error.message.includes('stale')) {
+                console.error('❌ Auth: Session init error', error);
+            }
+            if (data.session) {
+                setSession(data.session);
+                setUser(data.session.user);
+                // Background fetch
+                fetchProfile(data.session.user.id);
+            }
             setLoading(false);
         });
 
@@ -145,15 +120,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const refreshSession = async () => {
-        const { data, error } = await supabase.auth.getSession(); // getSession is better than refreshSession for just checking state
+        const { data, error } = await supabase.auth.getSession();
         if (error) throw error;
-
-        if (data.session) {
-            setSession(data.session);
-            setUser(data.session.user);
-            await fetchProfile(data.session.user.id);
-            return data.session;
-        }
+        // State updates handled by onAuthStateChange listener
+        return data.session;
     };
 
     const value = {
@@ -162,7 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         profile,
         loading,
         signOut,
-        refreshSession
+        refreshSession,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

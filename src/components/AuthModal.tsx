@@ -81,6 +81,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
       console.log('✅ Sign in successful:', {
         userId: result.user.id,
         email: result.user.email,
+        sessionPresent: !!result.session
       });
 
       toast.success('Welcome back!', {
@@ -93,8 +94,13 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signin' }
         name: result.profile?.full_name,
       }));
 
-      // Force context update before navigation to prevent race conditions
-      await refreshSession();
+      // No manual context update - allow listener to pick it up
+      // await refreshSession(); // Not needed if listener is working
+
+      // Wait for context to update (handled by separate useEffect or simple delay, but user pattern suggests useEffect)
+      // For now, we'll optimistically close
+      onSuccess?.();
+      onClose();
 
       onSuccess?.();
       onClose();
