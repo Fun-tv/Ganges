@@ -62,44 +62,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         async function initializeAuth() {
             try {
-                console.log('🔄 Auth: Resolving session...');
-                const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+                // console.log('🔄 Auth: Resolving session...');
+                const { data, error } = await supabase.auth.getSession();
 
-                if (error) throw error;
+                if (error) {
+                    // Suppress "Session from URL is stale" error as it's common and harmless
+                    if (!error.message?.includes('stale')) {
+                        console.error('❌ Auth: Session init error', error.message);
+                    }
+                }
 
                 if (mounted) {
-                    setSession(initialSession);
-                    setUser(initialSession?.user ?? null);
+                    // If we have a session, use it
+                    if (data?.session) {
+                        setSession(data.session);
+                        setUser(data.session.user);
 
-                    // 2. Immediate Hash Cleanup for Production
-                    if (window.location.hash.includes('access_token=')) {
-                        console.log('🧹 Auth: Cleaning OAuth hash');
-                        window.history.replaceState(null, '', window.location.pathname);
-                    }
+                        // Clean up hash if needed (legacy OAuth cleanup)
+                        if (window.location.hash && window.location.hash.includes('access_token=')) {
+                            window.history.replaceState(null, '', window.location.pathname);
+                        }
 
-                    if (initialSession?.user) {
-                        await fetchProfile(initialSession.user.id);
+                        await fetchProfile(data.session.user.id);
                     }
                 }
             } catch (err: any) {
-                console.error('❌ Auth: Init failed', err.message);
+                console.error('❌ Auth: Critical init failure', err);
             } finally {
                 if (mounted) {
-                    // Critical: If we found no session BUT there is an access_token in hash,
-                    // DO NOT turn off loading yet. Let logic in 'onAuthStateChange' handle it.
-                    const hasAuthHash = window.location.hash.includes('access_token');
-                    if (!hasAuthHash) {
-                        setLoading(false);
-                    } else {
-                        console.log('⏳ Auth: Detected OAuth hash, keeping loading=true');
-                        // SAFETY FALLBACK: Force loading to false after 4 seconds if Supabase doesn't resolve
-                        setTimeout(() => {
-                            if (mounted) {
-                                console.warn('⚠️ Auth: OAuth resolution timed out, forcing app load');
-                                setLoading(false);
-                            }
-                        }, 4000);
-                    }
+                    setLoading(false);
                     clearTimeout(timeoutId);
                 }
             }
